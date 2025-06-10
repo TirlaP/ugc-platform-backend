@@ -12,6 +12,7 @@
     "db:push": "prisma db push",
     "db:studio": "prisma studio",
     "db:seed": "tsx prisma/seed.ts",
+    "db:init": "bash scripts/init-db.sh",
     "typecheck": "bunx --bun tsc --noEmit --pretty",
     "check:ci": "biome check --changed --vcs-default-branch=origin/$GITHUB_BASE_REF --no-errors-on-unmatched src/",
     "check:all": "biome check src/",
