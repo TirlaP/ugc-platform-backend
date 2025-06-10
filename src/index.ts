@@ -30,7 +30,13 @@ app.use('*', logger());
 app.use(
   '*',
   cors({
-    origin: process.env['FRONTEND_URL'] || 'http://localhost:5173',
+    origin: [
+      process.env['FRONTEND_URL'] || 'http://localhost:5173',
+      'https://ugc-platform.netlify.app',
+      'http://localhost:5173',
+      'http://localhost:5174',
+      'http://localhost:5175',
+    ],
     credentials: true,
   })
 );
