@@ -1,0 +1,322 @@
+// Hybrid schema: Better Auth compatible + Full UGC functionality
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Better Auth User model with UGC extensions
+model User {
+  id            String    @id
+  name          String
+  email         String    @unique
+  emailVerified Boolean
+  image         String?
+  createdAt     DateTime?
+  updatedAt     DateTime?
+  
+  // Better Auth relations
+  sessions      Session[]
+  accounts      Account[]
+
+  // Basic custom fields (Better Auth compatible)
+  role          String?
+  banned        Boolean?
+  banReason     String?
+  banExpires    DateTime?
+  firstName     String?
+  lastName      String?
+  phone         String?
+  bio           String?
+  
+  // UGC Platform relations
+  organizations OrganizationMember[]
+  campaigns     Campaign[]
+  orders        Order[]            @relation("CreatorOrders")
+  messages      Message[]
+  media         Media[]
+  auditLogs     AuditLog[]
+
+  @@map("user")
+}
+
+// Better Auth Session model
+model Session {
+  id        String    @id
+  expiresAt DateTime
+  token     String    @unique
+  createdAt DateTime?
+  updatedAt DateTime?
+  ipAddress String?
+  userAgent String?
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  impersonatedBy String?
+
+  @@map("session")
+}
+
+// Better Auth Account model
+model Account {
+  id                    String    @id
+  accountId             String
+  providerId            String
+  userId                String
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime?
+  updatedAt             DateTime?
+
+  @@map("account")
+}
+
+// Better Auth Verification model
+model Verification {
+  id         String    @id
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime?
+  updatedAt  DateTime?
+
+  @@map("verification")
+}
+
+// ===========================================
+// UGC PLATFORM BUSINESS LOGIC MODELS
+// ===========================================
+
+// Organization/Multi-tenancy
+model Organization {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  logo      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  // Relations
+  members   OrganizationMember[]
+  campaigns Campaign[]
+  clients   Client[]
+  
+  @@index([slug])
+}
+
+model OrganizationMember {
+  id             String         @id @default(cuid())
+  organizationId String
+  userId         String
+  role           OrganizationRole
+  joinedAt       DateTime       @default(now())
+  
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@unique([organizationId, userId])
+  @@index([organizationId])
+  @@index([userId])
+}
+
+// Client model
+model Client {
+  id             String   @id @default(cuid())
+  organizationId String
+  name           String
+  email          String
+  phone          String?
+  company        String?
+  website        String?
+  notes          String?
+  status         ClientStatus @default(ACTIVE)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  campaigns    Campaign[]
+  
+  @@index([organizationId])
+  @@index([email])
+}
+
+// Campaign management
+model Campaign {
+  id             String         @id @default(cuid())
+  organizationId String
+  clientId       String
+  createdById    String
+  title          String
+  brief          String
+  requirements   Json?
+  budget         Decimal?       @db.Decimal(10, 2)
+  deadline       DateTime?
+  status         CampaignStatus @default(DRAFT)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  client       Client       @relation(fields: [clientId], references: [id])
+  createdBy    User         @relation(fields: [createdById], references: [id])
+  orders       Order[]
+  media        Media[]
+  messages     Message[]
+  
+  @@index([organizationId])
+  @@index([clientId])
+  @@index([status])
+}
+
+model Order {
+  id          String      @id @default(cuid())
+  campaignId  String
+  creatorId   String
+  status      OrderStatus @default(NEW)
+  assignedAt  DateTime    @default(now())
+  completedAt DateTime?
+  notes       String?
+  
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  creator  User     @relation("CreatorOrders", fields: [creatorId], references: [id])
+  media    Media[]
+  
+  @@index([campaignId])
+  @@index([creatorId])
+  @@index([status])
+}
+
+// Content/Media management
+model Media {
+  id          String      @id @default(cuid())
+  orderId     String?
+  campaignId  String
+  uploadedBy  String
+  url         String
+  thumbnailUrl String?
+  type        MediaType
+  size        Int
+  filename    String
+  mimeType    String
+  version     Int         @default(1)
+  status      MediaStatus @default(PENDING)
+  metadata    Json?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  
+  order      Order?   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  campaign   Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  uploader   User     @relation(fields: [uploadedBy], references: [id])
+  
+  @@index([orderId])
+  @@index([campaignId])
+  @@index([uploadedBy])
+  @@index([status])
+}
+
+// Communication
+model Message {
+  id         String   @id @default(cuid())
+  campaignId String
+  senderId   String
+  content    String
+  attachments Json?
+  createdAt  DateTime @default(now())
+  editedAt   DateTime?
+  
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  sender   User     @relation(fields: [senderId], references: [id])
+  
+  @@index([campaignId])
+  @@index([senderId])
+}
+
+// Audit logging
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String
+  entity    String
+  entityId  String
+  action    String
+  changes   Json?
+  ipAddress String?
+  userAgent String?
+  timestamp DateTime @default(now())
+  
+  user User @relation(fields: [userId], references: [id])
+  
+  @@index([userId])
+  @@index([entity, entityId])
+  @@index([timestamp])
+}
+
+// ===========================================
+// ENUMS
+// ===========================================
+
+enum Role {
+  ADMIN
+  STAFF
+  CREATOR
+  CLIENT
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+}
+
+enum OrganizationRole {
+  OWNER
+  ADMIN
+  MEMBER
+}
+
+enum ClientStatus {
+  ACTIVE
+  INACTIVE
+  ARCHIVED
+}
+
+enum CampaignStatus {
+  DRAFT
+  ACTIVE
+  IN_PROGRESS
+  REVIEW
+  COMPLETED
+  CANCELLED
+}
+
+enum OrderStatus {
+  NEW
+  ASSIGNED
+  IN_PROGRESS
+  SUBMITTED
+  REVISION_REQUESTED
+  APPROVED
+  COMPLETED
+  CANCELLED
+}
+
+enum MediaType {
+  IMAGE
+  VIDEO
+  DOCUMENT
+  OTHER
+}
+
+enum MediaStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  ARCHIVED
+}

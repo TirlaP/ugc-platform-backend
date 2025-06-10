@@ -1,0 +1,44 @@
+{
+  "name": "ugc-saas-backend",
+  "version": "1.0.0",
+  "description": "Backend API for UGC Agency Management Platform",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate dev",
+    "db:push": "prisma db push",
+    "db:studio": "prisma studio",
+    "db:seed": "tsx prisma/seed.ts",
+    "typecheck": "bunx --bun tsc --noEmit --pretty",
+    "check:ci": "biome check --changed --vcs-default-branch=origin/$GITHUB_BASE_REF --no-errors-on-unmatched src/",
+    "check:all": "biome check src/",
+    "check": "biome check --staged src/",
+    "format:all": "biome check --write src/",
+    "format": "biome check --staged --write src/",
+    "validate": "bun run check:ci && bun run typecheck"
+  },
+  "keywords": ["ugc", "agency", "hono", "api"],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@hono/node-server": "^1.14.4",
+    "@prisma/client": "^6.9.0",
+    "better-auth": "^1.2.9",
+    "cors": "^2.8.5",
+    "dotenv": "^16.5.0",
+    "hono": "^4.7.11",
+    "prisma": "^6.9.0",
+    "zod": "^3.25.57"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^1.9.4",
+    "@types/cors": "^2.8.19",
+    "@types/node": "^24.0.0",
+    "nodemon": "^3.1.10",
+    "tsx": "^4.19.4",
+    "typescript": "^5.8.3"
+  }
+}
