@@ -1,3 +1,4 @@
+import type { ClientStatus, Prisma } from '@prisma/client';
 import { Hono } from 'hono';
 import { z } from 'zod';
 import { prisma } from '../lib/auth.js';
@@ -24,18 +25,11 @@ clientRoutes.get('/', async (c) => {
     return c.json({ error: 'User not associated with an organization' }, 403);
   }
 
-  const where: {
-    organizationId: string;
-    status?: string;
-    OR?: Array<{
-      name?: { contains: string; mode: 'insensitive' };
-      email?: { contains: string; mode: 'insensitive' };
-    }>;
-  } = {
+  const where: Prisma.ClientWhereInput = {
     organizationId: user.organizationId,
   };
 
-  if (status) where.status = status;
+  if (status) where.status = status as ClientStatus;
   if (search) {
     where.OR = [
       { name: { contains: search, mode: 'insensitive' } },

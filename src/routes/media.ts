@@ -1,3 +1,4 @@
+import type { MediaStatus, MediaType, Prisma } from '@prisma/client';
 import { Hono } from 'hono';
 import { z } from 'zod';
 import { prisma } from '../lib/auth.js';
@@ -36,19 +37,12 @@ mediaRoutes.get('/', async (c) => {
     return c.json({ error: 'User not associated with an organization' }, 403);
   }
 
-  const where: {
-    OR: Array<{
-      campaign?: { organizationId: string };
-      uploadedBy?: string;
-    }>;
-    status?: string;
-    type?: string;
-  } = {
+  const where: Prisma.MediaWhereInput = {
     OR: [{ campaign: { organizationId: user.organizationId } }, { uploadedBy: user.id }],
   };
 
-  if (status) where.status = status;
-  if (type) where.type = type;
+  if (status) where.status = status as MediaStatus;
+  if (type) where.type = type as MediaType;
 
   const [media, total] = await Promise.all([
     prisma.media.findMany({
@@ -120,13 +114,9 @@ mediaRoutes.get('/campaign/:campaignId', async (c) => {
     return c.json({ error: 'Campaign not found' }, 404);
   }
 
-  const where: {
-    campaignId: string;
-    status?: string;
-    type?: string;
-  } = { campaignId };
-  if (status) where.status = status;
-  if (type) where.type = type;
+  const where: Prisma.MediaWhereInput = { campaignId };
+  if (status) where.status = status as MediaStatus;
+  if (type) where.type = type as MediaType;
 
   const [media, total] = await Promise.all([
     prisma.media.findMany({

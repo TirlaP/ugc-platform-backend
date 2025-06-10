@@ -1,8 +1,8 @@
+import type { CampaignStatus, Prisma } from '@prisma/client';
 import { Hono } from 'hono';
 import { z } from 'zod';
 import { prisma } from '../lib/auth.js';
 import type { UserWithOrganization } from '../types/index.js';
-import type { CampaignStatus, Prisma } from '@prisma/client';
 
 const campaignRoutes = new Hono<{ Variables: { user: UserWithOrganization } }>();
 
