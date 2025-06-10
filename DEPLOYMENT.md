@@ -13,7 +13,8 @@
 3. Configure the service:
    - **Name**: `ugc-platform-backend`
    - **Environment**: Node
-   - **Build Command**: `npm install && npm run build` (or let Render use default)
+   - **Build Command**: `npm install && npm run build && npx prisma generate && npx prisma db push --accept-data-loss && npm run db:seed:prod` 
+   - **Alternative**: Use default build command - database setup happens on startup
    - **Start Command**: `npm start` (automatically sets up database on first run)
    - **Instance Type**: Free tier (or upgrade as needed)
 

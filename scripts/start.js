@@ -12,9 +12,9 @@ async function setupDatabase() {
     console.log('🔧 Generating Prisma client...');
     await execAsync('npx prisma generate');
     
-    // Push schema to create tables
+    // Push schema to create tables (accept data loss for existing non-UGC data)
     console.log('📄 Creating database tables...');
-    await execAsync('npx prisma db push');
+    await execAsync('npx prisma db push --accept-data-loss');
     
     // Check if database needs seeding
     const prisma = new PrismaClient();
