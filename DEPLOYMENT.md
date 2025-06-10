@@ -13,7 +13,7 @@
 3. Configure the service:
    - **Name**: `ugc-platform-backend`
    - **Environment**: Node
-   - **Build Command**: `npm install && npm run build && npm run db:generate && npx prisma db push`
+   - **Build Command**: `npm install && npm run build && npx prisma generate && npx prisma db push && npm run db:seed:prod`
    - **Start Command**: `npm start`
    - **Instance Type**: Free tier (or upgrade as needed)
 
@@ -59,20 +59,12 @@ Add this to package.json scripts:
    - Authorized redirect URI: `https://your-backend.onrender.com/api/auth/callback/google`
 
 ### 6. Database Setup
-After first deployment, connect to your Render service shell and run:
+The build command automatically:
+- ✅ Creates all database tables (`npx prisma db push`)
+- ✅ Generates Prisma client (`npx prisma generate`) 
+- ✅ Seeds demo data (`npm run db:seed:prod`)
 
-```bash
-# Push schema to create tables (alternative to migrations for first setup)
-npx prisma db push
-
-# Generate Prisma client
-npx prisma generate
-
-# Seed with demo data (IMPORTANT: Run this!)
-npm run db:seed
-```
-
-**Note**: If build command didn't create tables, run these manually in Render shell.
+**No manual steps required!** The database will be fully set up during deployment.
 
 **What the seed creates:**
 - Demo organization: "UGC Agency Demo"
