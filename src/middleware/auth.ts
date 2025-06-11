@@ -1,80 +1,105 @@
+/**
+ * Simple JWT-based authentication middleware
+ */
+
 import type { Context, Next } from 'hono';
 import { auth } from '../lib/auth.js';
 import { prisma } from '../lib/auth.js';
 
-// Auth middleware
+// Extend context with user
+declare module 'hono' {
+  interface ContextVariableMap {
+    user?: any;
+    organization?: any;
+  }
+}
+
+/**
+ * Auth middleware - verifies JWT token
+ */
 export const authMiddleware = () => {
-  return async (c: Context, next: Next): Promise<Response | undefined> => {
-    try {
-      // Get session from Better Auth
-      const request = c.req.raw;
-      const response = await auth.api.getSession({ headers: request.headers });
-
-      if (!response?.session || !response.user) {
-        return c.json({ error: 'Unauthorized' }, 401);
-      }
-
-      // Get full user data with organization
-      const user = await prisma.user.findUnique({
-        where: { id: response.user.id },
-        include: {
-          organizations: {
-            include: {
-              organization: true,
-            },
-          },
-        },
-      });
-
-      if (!user) {
-        return c.json({ error: 'User not found' }, 401);
-      }
-
-      // Add user and organization to context
-      c.set('user', {
-        ...user,
-        organizationId: user.organizations[0]?.organizationId || null,
-      });
-
-      await next();
-      return;
-    } catch (error) {
-      console.error('Auth middleware error:', error);
-      return c.json({ error: 'Authentication failed' }, 401);
+  return async (c: Context, next: Next) => {
+    const token = c.req.header('Authorization')?.replace('Bearer ', '');
+    
+    if (!token) {
+      return c.json({ error: 'No token provided' }, 401);
     }
+    
+    const payload = auth.verifyToken(token);
+    if (!payload) {
+      return c.json({ error: 'Invalid token' }, 401);
+    }
+    
+    // Get full user data
+    const user = await prisma.user.findUnique({
+      where: { id: payload.userId },
+    });
+    
+    if (!user) {
+      return c.json({ error: 'User not found' }, 401);
+    }
+    
+    c.set('user', user);
+    return await next();
   };
 };
 
-// Role-based access control middleware
-export const requireRoles = (allowedRoles: string[]) => {
-  return async (c: Context, next: Next): Promise<Response | undefined> => {
+/**
+ * Require specific roles
+ */
+export const requireRoles = (roles: string[]) => {
+  return async (c: Context, next: Next) => {
     const user = c.get('user');
-
+    
     if (!user) {
       return c.json({ error: 'Unauthorized' }, 401);
     }
-
-    const hasRole = user.role && allowedRoles.includes(user.role);
-
-    if (!hasRole) {
-      return c.json({ error: 'Forbidden' }, 403);
+    
+    if (!roles.includes(user.role || 'CLIENT')) {
+      return c.json({ error: 'Insufficient permissions' }, 403);
     }
-
-    await next();
-    return;
+    
+    return await next();
   };
 };
 
-// Organization middleware
+/**
+ * Require organization membership
+ */
 export const requireOrganization = () => {
-  return async (c: Context, next: Next): Promise<Response | undefined> => {
+  return async (c: Context, next: Next) => {
     const user = c.get('user');
-
-    if (!user?.organizationId) {
-      return c.json({ error: 'Organization required' }, 403);
+    const orgId = c.req.header('X-Organization-ID');
+    
+    if (!orgId) {
+      return c.json({ error: 'Organization ID required' }, 400);
     }
-
-    await next();
-    return;
+    
+    // Check if user belongs to organization
+    const membership = await prisma.organizationMember.findFirst({
+      where: {
+        userId: user.id,
+        organizationId: orgId,
+      },
+      include: {
+        organization: true,
+      },
+    });
+    
+    if (!membership) {
+      return c.json({ error: 'Not a member of this organization' }, 403);
+    }
+    
+    c.set('organization', membership.organization);
+    
+    // Enhance user object with organization context
+    const userWithOrg = {
+      ...user,
+      organizationId: orgId,
+      organizationRole: membership.role,
+    };
+    c.set('user', userWithOrg);
+    
+    return await next();
   };
 };

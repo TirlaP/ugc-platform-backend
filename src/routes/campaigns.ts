@@ -28,6 +28,8 @@ campaignRoutes.get('/', async (c) => {
   const user = c.get('user');
   const { status, clientId, search, page = '1', limit = '10' } = c.req.query();
 
+  console.log('user', user)
+
   if (!user.organizationId) {
     return c.json({ error: 'User not associated with an organization' }, 403);
   }

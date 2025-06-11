@@ -40,7 +40,7 @@ emailRoutes.get('/settings', async (c) => {
   const user = c.get('user');
 
   if (!user.organizationId) {
-    return c.json({ error: 'User not associated with an organization' }, 403);
+    return c.json({ error: 'User not associated with an organization' }, 400);
   }
 
   // For now, return mock settings

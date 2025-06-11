@@ -68,15 +68,19 @@ app.use('/api/creators/*', authMiddleware());
 app.route('/api/creators', creatorRoutes);
 
 app.use('/api/media/*', authMiddleware());
+app.use('/api/media/*', requireOrganization());
 app.route('/api/media', mediaRoutes);
 
 app.use('/api/messages/*', authMiddleware());
+app.use('/api/messages/*', requireOrganization());
 app.route('/api/messages', messageRoutes);
 
 app.use('/api/email/*', authMiddleware());
+app.use('/api/email/*', requireOrganization());
 app.route('/api/email', emailRoutes);
 
 app.use('/api/drive/*', authMiddleware());
+app.use('/api/drive/*', requireOrganization());
 app.route('/api/drive', driveRoutes);
 
 app.use('/api/organizations/*', authMiddleware());

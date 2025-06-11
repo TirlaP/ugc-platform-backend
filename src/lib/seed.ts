@@ -1,10 +1,12 @@
 import { PrismaClient } from '@prisma/client';
-// Note: hash function not needed for basic seeding
 
 const prisma = new PrismaClient();
 
 async function main() {
   console.log('🌱 Starting database seed...');
+  
+  // Password hashing removed - not needed with current schema
+  // const hashedPassword = await bcrypt.hash('demo123456', 10);
 
   // Create test organization
   const organization = await prisma.organization.create({
@@ -20,6 +22,7 @@ async function main() {
     data: {
       id: 'admin_user_1',
       email: 'admin@demo.com',
+      // password field removed
       name: 'Admin User',
       role: 'ADMIN',
       emailVerified: true,
@@ -38,6 +41,7 @@ async function main() {
     data: {
       id: 'staff_user_1',
       email: 'staff@demo.com',
+      // password field removed
       name: 'Staff Member',
       role: 'STAFF',
       emailVerified: true,
@@ -57,6 +61,7 @@ async function main() {
       data: {
         id: 'creator_user_1',
         email: 'sarah@creator.com',
+        // password field removed
         name: 'Sarah Johnson',
         role: 'CREATOR',
         emailVerified: true,
@@ -67,6 +72,7 @@ async function main() {
       data: {
         id: 'creator_user_2',
         email: 'mike@creator.com',
+        // password field removed
         name: 'Mike Chen',
         role: 'CREATOR',
         emailVerified: true,
@@ -77,6 +83,7 @@ async function main() {
       data: {
         id: 'creator_user_3',
         email: 'emma@creator.com',
+        // password field removed
         name: 'Emma Williams',
         role: 'CREATOR',
         emailVerified: true,

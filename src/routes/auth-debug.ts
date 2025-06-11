@@ -14,23 +14,30 @@ const signUpSchema = z.object({
   email: z.string().email(),
   password: z.string().min(6),
   name: z.string().min(1),
-  firstName: z.string().optional(),
-  lastName: z.string().optional(),
-  phone: z.string().optional(),
-  role: z.string().optional(),
-  organizationName: z.string().optional(),
 });
 
-// Sign in
+// Sign in with debug logging
 authRoutes.post('/sign-in', async (c) => {
   try {
-    const body = await c.req.json();
-    const { email, password } = signInSchema.parse(body);
+    console.log('🔍 Auth request received');
     
+    const body = await c.req.json();
+    console.log('📝 Request body:', { email: body.email, password: body.password ? '[HIDDEN]' : 'MISSING' });
+    
+    const { email, password } = signInSchema.parse(body);
+    console.log('✅ Schema validation passed');
+    
+    console.log('🔄 Calling auth.signIn...');
     const result = await auth.signIn(email, password);
+    console.log('✅ Auth successful');
     
     return c.json(result);
   } catch (error: any) {
+    console.error('❌ Auth error:', {
+      message: error.message,
+      stack: error.stack,
+      name: error.name
+    });
     return c.json({ error: error.message || 'Sign in failed' }, 401);
   }
 });
@@ -39,19 +46,9 @@ authRoutes.post('/sign-in', async (c) => {
 authRoutes.post('/sign-up', async (c) => {
   try {
     const body = await c.req.json();
-    const userData = signUpSchema.parse(body);
+    const { email, password, name } = signUpSchema.parse(body);
     
-    // Convert undefined to null for Prisma compatibility
-    const processedData = {
-      ...userData,
-      firstName: userData.firstName || null,
-      lastName: userData.lastName || null,
-      phone: userData.phone || null,
-      role: userData.role || 'CLIENT',
-      organizationName: userData.organizationName || undefined,
-    };
-    
-    const result = await auth.signUp(processedData);
+    const result = await auth.signUp({ email, password, name, role: 'CLIENT' });
     
     return c.json(result);
   } catch (error: any) {

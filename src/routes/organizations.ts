@@ -18,6 +18,24 @@ const createOrganizationSchema = z
   })
   .passthrough(); // Allow extra fields for now
 
+// Get current user's organizations
+organizationRoutes.get('/me', async (c) => {
+  const user = c.get('user');
+
+  const organizations = await prisma.organizationMember.findMany({
+    where: { userId: user.id },
+    include: {
+      organization: true,
+    },
+    orderBy: { joinedAt: 'desc' },
+  });
+
+  return c.json(organizations.map((m) => ({
+    ...m.organization,
+    userRole: m.role,
+  })));
+});
+
 // Get all organizations (basic list)
 organizationRoutes.get('/', async (c) => {
   const user = c.get('user');
