@@ -329,6 +329,94 @@ creatorRoutes.get('/:id/stats', async (c) => {
   });
 });
 
+// Get all orders for a creator
+creatorRoutes.get('/:id/orders', async (c) => {
+  const { id } = c.req.param();
+  const { page = '1', limit = '10', status } = c.req.query();
+
+  // Check if creator exists
+  const creator = await prisma.user.findFirst({
+    where: {
+      id,
+      role: 'CREATOR',
+    },
+  });
+
+  if (!creator) {
+    return c.json({ error: 'Creator not found' }, 404);
+  }
+
+  // Build where clause for orders
+  const where: {
+    creatorId: string;
+    status?: string;
+  } = {
+    creatorId: id,
+  };
+
+  if (status) {
+    where.status = status;
+  }
+
+  const [orders, total] = await Promise.all([
+    prisma.order.findMany({
+      where,
+      include: {
+        campaign: {
+          include: {
+            client: {
+              select: {
+                id: true,
+                name: true,
+                email: true,
+                image: true,
+                company: true,
+              },
+            },
+          },
+        },
+        _count: {
+          select: { media: true },
+        },
+      },
+      skip: (Number.parseInt(page) - 1) * Number.parseInt(limit),
+      take: Number.parseInt(limit),
+      orderBy: { assignedAt: 'desc' },
+    }),
+    prisma.order.count({ where }),
+  ]);
+
+  // Format orders with additional information
+  const formattedOrders = orders.map((order) => ({
+    id: order.id,
+    status: order.status,
+    assignedAt: order.assignedAt,
+    submittedAt: order.submittedAt,
+    completedAt: order.completedAt,
+    mediaCount: order._count.media,
+    campaign: {
+      id: order.campaign.id,
+      name: order.campaign.name,
+      description: order.campaign.description,
+      status: order.campaign.status,
+      startDate: order.campaign.startDate,
+      endDate: order.campaign.endDate,
+      budget: order.campaign.budget,
+      client: order.campaign.client,
+    },
+  }));
+
+  return c.json({
+    orders: formattedOrders,
+    pagination: {
+      page: Number.parseInt(page),
+      limit: Number.parseInt(limit),
+      total,
+      pages: Math.ceil(total / Number.parseInt(limit)),
+    },
+  });
+});
+
 // Delete creator
 creatorRoutes.delete('/:id', async (c) => {
   const user = c.get('user');
