@@ -251,4 +251,50 @@ campaignRoutes.post('/:id/assign', async (c) => {
   return c.json(order, 201);
 });
 
+// Unassign creator from campaign (delete order)
+campaignRoutes.delete('/:id/orders/:orderId', async (c) => {
+  const user = c.get('user');
+  const { id, orderId } = c.req.param();
+
+  if (!user.organizationId) {
+    return c.json({ error: 'User not associated with an organization' }, 403);
+  }
+
+  // Verify campaign exists and belongs to user's organization
+  const campaign = await prisma.campaign.findFirst({
+    where: {
+      id,
+      organizationId: user.organizationId,
+    },
+  });
+
+  if (!campaign) {
+    return c.json({ error: 'Campaign not found' }, 404);
+  }
+
+  // Verify order exists and belongs to this campaign
+  const order = await prisma.order.findFirst({
+    where: {
+      id: orderId,
+      campaignId: id,
+    },
+  });
+
+  if (!order) {
+    return c.json({ error: 'Order not found' }, 404);
+  }
+
+  // Check if order can be deleted (not completed)
+  if (order.status === 'COMPLETED') {
+    return c.json({ error: 'Cannot unassign completed orders' }, 400);
+  }
+
+  // Delete the order
+  await prisma.order.delete({
+    where: { id: orderId },
+  });
+
+  return c.json({ success: true });
+});
+
 export default campaignRoutes;
