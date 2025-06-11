@@ -11,6 +11,9 @@ export const auth = betterAuth({
   
   // Base URL for Better Auth
   baseURL: process.env['BETTER_AUTH_URL'] || 'http://localhost:3000',
+  
+  // Secret for signing tokens
+  secret: process.env['BETTER_AUTH_SECRET'] || 'your-secret-key',
 
   // Allow requests from frontend
   trustedOrigins: [
@@ -78,12 +81,15 @@ export const auth = betterAuth({
     },
     // Cookie settings - always use these for consistency
     cookie: {
+      name: 'ugc-session',
       secure: process.env['NODE_ENV'] === 'production',
       sameSite: 'none', // Required for cross-domain cookies
       httpOnly: true,
       path: '/',
       // Don't set domain - let browser handle it
     },
+    // Force session creation
+    expiresIn: 60 * 60 * 24 * 7, // 7 days
   },
 });
 
