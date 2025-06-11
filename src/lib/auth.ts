@@ -73,22 +73,28 @@ export const auth = betterAuth({
     },
   },
 
-  // Session configuration - keeping minimal for now
+  // Cross-domain cookie configuration for production
+  advanced: {
+    ...(process.env['NODE_ENV'] === 'production' && {
+      crossSubDomainCookies: {
+        enabled: true,
+        domain: '.onrender.com',
+      },
+    }),
+    defaultCookieAttributes: {
+      secure: process.env['NODE_ENV'] === 'production',
+      httpOnly: true,
+      sameSite: process.env['NODE_ENV'] === 'production' ? 'none' : 'lax',
+      partitioned: process.env['NODE_ENV'] === 'production',
+    },
+  },
+
+  // Session configuration
   session: {
     cookieCache: {
       enabled: true,
       maxAge: 60 * 60 * 24 * 7, // 7 days
     },
-    // Cookie settings - always use these for consistency
-    cookie: {
-      name: 'ugc-session',
-      secure: process.env['NODE_ENV'] === 'production',
-      sameSite: 'none', // Required for cross-domain cookies
-      httpOnly: true,
-      path: '/',
-      // Don't set domain - let browser handle it
-    },
-    // Force session creation
     expiresIn: 60 * 60 * 24 * 7, // 7 days
   },
 });
