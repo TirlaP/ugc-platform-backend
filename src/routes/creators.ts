@@ -1,5 +1,6 @@
 import { Hono } from 'hono';
 import { z } from 'zod';
+import bcrypt from 'bcryptjs';
 import { prisma } from '../lib/auth.js';
 import type { UserWithOrganization } from '../types/index.js';
 
@@ -115,12 +116,15 @@ creatorRoutes.post('/', async (c) => {
     return c.json({ error: 'User with this email already exists' }, 400);
   }
 
-  // Create the creator user
+  // Create the creator user with a temporary password
+  const tempPassword = await bcrypt.hash('temp123456', 12); // Temporary password, user should change this
+  
   const creator = await prisma.user.create({
     data: {
       id: `creator_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       name: result.data.name || '',
       email: result.data.email,
+      password: tempPassword,
       emailVerified: false, // They'll need to verify their email
       role: 'CREATOR',
       phone: result.data.phone || null,

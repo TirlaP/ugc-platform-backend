@@ -61,18 +61,28 @@ authRoutes.post('/sign-up', async (c) => {
 
 // Get current user
 authRoutes.get('/me', async (c) => {
-  const token = c.req.header('Authorization')?.replace('Bearer ', '');
-  
-  if (!token) {
-    return c.json({ error: 'No token provided' }, 401);
+  try {
+    const token = c.req.header('Authorization')?.replace('Bearer ', '');
+    
+    if (!token) {
+      return c.json({ error: 'No token provided' }, 401);
+    }
+    
+    const payload = auth.verifyToken(token);
+    if (!payload) {
+      return c.json({ error: 'Invalid token' }, 401);
+    }
+    
+    // Fetch fresh user data from database
+    const user = await auth.getUserById(payload.userId);
+    if (!user) {
+      return c.json({ error: 'User not found' }, 401);
+    }
+    
+    return c.json({ user });
+  } catch (error: any) {
+    return c.json({ error: error.message || 'Failed to get user' }, 401);
   }
-  
-  const payload = auth.verifyToken(token);
-  if (!payload) {
-    return c.json({ error: 'Invalid token' }, 401);
-  }
-  
-  return c.json({ user: payload });
 });
 
 // Sign out (just a placeholder - token invalidation happens on client)

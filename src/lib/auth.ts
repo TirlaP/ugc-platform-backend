@@ -1,14 +1,16 @@
 /**
- * Simple JWT-based authentication
+ * Simple JWT-based authentication with bcrypt password hashing
  */
 
 import { PrismaClient } from '@prisma/client';
 import jwt from 'jsonwebtoken';
+import bcrypt from 'bcryptjs';
 
 export const prisma = new PrismaClient();
 
 const JWT_SECRET = process.env['JWT_SECRET'] || 'your-secret-key-change-this';
 const JWT_EXPIRES_IN = '7d';
+const SALT_ROUNDS = 12;
 
 export interface JWTPayload {
   userId: string;
@@ -36,11 +38,23 @@ export const auth = {
   },
 
   /**
+   * Hash password using bcrypt
+   */
+  async hashPassword(password: string): Promise<string> {
+    return bcrypt.hash(password, SALT_ROUNDS);
+  },
+
+  /**
+   * Compare password with hash
+   */
+  async comparePassword(password: string, hash: string): Promise<boolean> {
+    return bcrypt.compare(password, hash);
+  },
+
+  /**
    * Sign in with email and password
    */
-  async signIn(email: string, _password: string) {
-    // For now, find user by email and create session
-    // In production, integrate with Better Auth
+  async signIn(email: string, password: string) {
     const user = await prisma.user.findUnique({
       where: { email },
     });
@@ -49,9 +63,12 @@ export const auth = {
       throw new Error('Invalid credentials');
     }
 
-    // TODO: Integrate with Better Auth for actual password verification
-    // For now, just check if user exists
-    
+    // Compare provided password with stored hash
+    const isPasswordValid = await this.comparePassword(password, user.password);
+    if (!isPasswordValid) {
+      throw new Error('Invalid credentials');
+    }
+
     const token = this.generateToken({
       userId: user.id,
       email: user.email,
@@ -65,6 +82,9 @@ export const auth = {
         email: user.email,
         name: user.name,
         role: user.role,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        phone: user.phone,
       },
     };
   },
@@ -90,21 +110,19 @@ export const auth = {
       throw new Error('User already exists');
     }
 
-    // TODO: Store password in Better Auth accounts table
-    // For now, just create user without password
+    // Hash the password before storing
+    const hashedPassword = await this.hashPassword(userData.password);
 
     const user = await prisma.user.create({
       data: {
-        id: crypto.randomUUID(),
         email: userData.email,
+        password: hashedPassword,
         name: userData.name,
         firstName: userData.firstName || null,
         lastName: userData.lastName || null,
         phone: userData.phone || null,
         role: userData.role,
         emailVerified: false,
-        createdAt: new Date(),
-        updatedAt: new Date(),
       },
     });
 
@@ -125,6 +143,30 @@ export const auth = {
         lastName: user.lastName,
         phone: user.phone,
       },
+    };
+  },
+
+  /**
+   * Get user by ID (for token validation)
+   */
+  async getUserById(userId: string) {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user) {
+      return null;
+    }
+
+    return {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      role: user.role,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      phone: user.phone,
+      emailVerified: user.emailVerified,
     };
   },
 };

@@ -1,9 +1,14 @@
 import { PrismaClient } from '@prisma/client';
+import bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
 
 async function main() {
   console.log('🌱 Starting better database seed...');
+  
+  // Create default password hash for demo users
+  const defaultPassword = await bcrypt.hash('demo123456', 12);
+  console.log('🔒 Generated default password hash');
   
   // Create the main demo organization first
   const organization = await prisma.organization.create({
@@ -20,6 +25,7 @@ async function main() {
     data: {
       id: 'admin_user_demo',
       email: 'admin@demo.com',
+      password: defaultPassword,
       name: 'Demo Admin',
       firstName: 'Demo',
       lastName: 'Admin',
@@ -47,6 +53,7 @@ async function main() {
     data: {
       id: 'staff_user_demo',
       email: 'staff@demo.com',
+      password: defaultPassword,
       name: 'Demo Staff',
       firstName: 'Demo',
       lastName: 'Staff',
@@ -81,6 +88,7 @@ async function main() {
     const user = await prisma.user.create({
       data: {
         ...creator,
+        password: defaultPassword,
         role: 'CREATOR',
         emailVerified: true,
         createdAt: new Date(),

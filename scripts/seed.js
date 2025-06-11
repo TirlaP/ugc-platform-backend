@@ -27,7 +27,7 @@ async function main() {
     console.log('✅ Found existing organization:', org.name);
   }
 
-  // Create or update admin user with admin@demo.com
+  // Create or update admin user with direct password storage
   let adminUser = await prisma.user.findUnique({
     where: { email: 'admin@demo.com' },
   });
@@ -35,7 +35,6 @@ async function main() {
   if (!adminUser) {
     adminUser = await prisma.user.create({
       data: {
-        id: crypto.randomUUID(),
         email: 'admin@demo.com',
         password: hashedPassword,
         name: 'Demo Admin',
@@ -185,7 +184,6 @@ async function main() {
   if (!creator1) {
     creator1 = await prisma.user.create({
       data: {
-        id: crypto.randomUUID(),
         email: 'emma@creators.com',
         password: hashedPassword,
         name: 'Emma Rodriguez',
@@ -206,7 +204,6 @@ async function main() {
   if (!creator2) {
     creator2 = await prisma.user.create({
       data: {
-        id: crypto.randomUUID(),
         email: 'marcus@creators.com',
         password: hashedPassword,
         name: 'Marcus Chen',
@@ -257,7 +254,7 @@ async function main() {
   console.log('\n📝 Login Credentials:');
   console.log('   📧 Email: admin@demo.com');
   console.log('   🔑 Password: demo123456');
-  console.log('\n✅ Ready for production use!');
+  console.log('\n✅ Simple authentication ready!');
 }
 
 main()

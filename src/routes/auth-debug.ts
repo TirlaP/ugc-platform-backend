@@ -45,31 +45,60 @@ authRoutes.post('/sign-in', async (c) => {
 // Sign up
 authRoutes.post('/sign-up', async (c) => {
   try {
-    const body = await c.req.json();
-    const { email, password, name } = signUpSchema.parse(body);
+    console.log('🔍 Sign up request received');
     
-    const result = await auth.signUp({ email, password, name, role: 'CLIENT' });
+    const body = await c.req.json();
+    console.log('📝 Request body:', { email: body.email, password: body.password ? '[HIDDEN]' : 'MISSING', name: body.name });
+    
+    const { email, password, name } = signUpSchema.parse(body);
+    console.log('✅ Schema validation passed');
+    
+    console.log('🔄 Calling auth.signUp...');
+    const result = await auth.signUp({
+      email,
+      password,
+      name,
+      role: 'CLIENT'
+    });
+    console.log('✅ Sign up successful');
     
     return c.json(result);
   } catch (error: any) {
+    console.error('❌ Sign up error:', {
+      message: error.message,
+      stack: error.stack,
+      name: error.name
+    });
     return c.json({ error: error.message || 'Sign up failed' }, 400);
   }
 });
 
 // Get current user
 authRoutes.get('/me', async (c) => {
-  const token = c.req.header('Authorization')?.replace('Bearer ', '');
-  
-  if (!token) {
-    return c.json({ error: 'No token provided' }, 401);
+  try {
+    console.log('🔍 /me request received');
+    
+    const token = c.req.header('Authorization')?.replace('Bearer ', '');
+    console.log('🔑 Token present:', token ? 'YES' : 'NO');
+    
+    if (!token) {
+      console.log('❌ No token provided');
+      return c.json({ error: 'No token provided' }, 401);
+    }
+    
+    console.log('🔓 Verifying token...');
+    const payload = auth.verifyToken(token);
+    if (!payload) {
+      console.log('❌ Invalid token');
+      return c.json({ error: 'Invalid token' }, 401);
+    }
+    
+    console.log('✅ Token valid for user:', payload.email);
+    return c.json({ user: payload });
+  } catch (error: any) {
+    console.error('❌ /me error:', error);
+    return c.json({ error: error.message || 'Failed to get user' }, 401);
   }
-  
-  const payload = auth.verifyToken(token);
-  if (!payload) {
-    return c.json({ error: 'Invalid token' }, 401);
-  }
-  
-  return c.json({ user: payload });
 });
 
 // Sign out (just a placeholder - token invalidation happens on client)

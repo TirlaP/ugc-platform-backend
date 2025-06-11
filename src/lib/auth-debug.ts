@@ -76,7 +76,7 @@ export const auth = {
   /**
    * Sign in with email and password - debug version
    */
-  async signIn(email: string, _password: string) {
+  async signIn(email: string, password: string) {
     console.log('🔑 Sign in attempt for:', email);
     
     try {
@@ -93,12 +93,12 @@ export const auth = {
       console.log('✅ User found:', {
         id: user.id,
         email: user.email,
-        hasPassword: 'NO (removed)',
-        passwordLength: 0
+        hasPassword: user.password ? 'YES' : 'NO',
+        passwordLength: user.password ? user.password.length : 0
       });
 
-      console.log('🔐 Skipping password verification (password field removed)...');
-      const isValid = true; // TODO: Replace with Better Auth verification
+      console.log('🔐 Verifying password...');
+      const isValid = await this.verifyPassword(password, user.password);
       
       if (!isValid) {
         console.log('❌ Password verification failed');
@@ -134,35 +134,48 @@ export const auth = {
   /**
    * Sign up new user
    */
-  async signUp(email: string, _password: string, name: string) {
+  async signUp(userData: {
+    email: string;
+    password: string;
+    name: string;
+    role: string;
+  }) {
+    const { email, password, name, role } = userData;
+    console.log('📝 Sign up attempt for:', email);
+    
     const exists = await prisma.user.findUnique({
       where: { email },
     });
 
     if (exists) {
+      console.log('❌ User already exists');
       throw new Error('User already exists');
     }
 
-    // const hashedPassword = await this.hashPassword(password); // Not needed anymore
+    console.log('🔒 Hashing password...');
+    const hashedPassword = await this.hashPassword(password);
 
+    console.log('👤 Creating user in database...');
     const user = await prisma.user.create({
       data: {
-        id: crypto.randomUUID(), // Generate ID
         email,
-        // password field removed
+        password: hashedPassword,
         name,
-        role: 'CLIENT',
+        role,
         emailVerified: false,
-        createdAt: new Date(),
-        updatedAt: new Date(),
       },
     });
 
+    console.log('✅ User created successfully');
+    console.log('🎫 Generating token...');
+    
     const token = this.generateToken({
       userId: user.id,
       email: user.email,
       role: user.role || 'CLIENT',
     });
+
+    console.log('✅ Sign up successful');
 
     return {
       token,
