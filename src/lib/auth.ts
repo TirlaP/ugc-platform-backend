@@ -73,19 +73,13 @@ export const auth = betterAuth({
     },
   },
 
-  // Cross-domain cookie configuration for production
+  // Cross-domain cookie configuration
   advanced: {
-    ...(process.env['NODE_ENV'] === 'production' && {
-      crossSubDomainCookies: {
-        enabled: true,
-        domain: '.onrender.com',
-      },
-    }),
     defaultCookieAttributes: {
-      secure: process.env['NODE_ENV'] === 'production',
+      secure: false, // Allow non-secure cookies for testing
       httpOnly: true,
-      sameSite: process.env['NODE_ENV'] === 'production' ? 'none' : 'lax',
-      partitioned: process.env['NODE_ENV'] === 'production',
+      sameSite: 'lax', // Less restrictive for development
+      partitioned: false,
     },
   },
 
