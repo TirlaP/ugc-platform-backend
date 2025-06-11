@@ -347,10 +347,7 @@ creatorRoutes.get('/:id/orders', async (c) => {
   }
 
   // Build where clause for orders
-  const where: {
-    creatorId: string;
-    status?: string;
-  } = {
+  const where: any = {
     creatorId: id,
   };
 
@@ -369,7 +366,6 @@ creatorRoutes.get('/:id/orders', async (c) => {
                 id: true,
                 name: true,
                 email: true,
-                image: true,
                 company: true,
               },
             },
@@ -391,16 +387,16 @@ creatorRoutes.get('/:id/orders', async (c) => {
     id: order.id,
     status: order.status,
     assignedAt: order.assignedAt,
-    submittedAt: order.submittedAt,
+    submittedAt: null, // submittedAt field doesn't exist in schema
     completedAt: order.completedAt,
     mediaCount: order._count.media,
     campaign: {
       id: order.campaign.id,
-      name: order.campaign.name,
-      description: order.campaign.description,
+      name: order.campaign.title, // use 'title' instead of 'name'
+      description: order.campaign.brief, // use 'brief' instead of 'description'
       status: order.campaign.status,
-      startDate: order.campaign.startDate,
-      endDate: order.campaign.endDate,
+      startDate: null, // startDate field doesn't exist in schema
+      endDate: order.campaign.deadline, // use 'deadline' instead of 'endDate'
       budget: order.campaign.budget,
       client: order.campaign.client,
     },
