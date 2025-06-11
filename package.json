@@ -33,12 +33,14 @@
   "dependencies": {
     "@hono/node-server": "^1.14.4",
     "@prisma/client": "^6.9.0",
+    "@types/node-cron": "^3.0.11",
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
     "dotenv": "^16.5.0",
     "express": "^5.1.0",
     "hono": "^4.7.11",
     "jsonwebtoken": "^9.0.2",
+    "node-cron": "^4.1.0",
     "pg": "^8.16.0",
     "prisma": "^6.9.0",
     "zod": "^3.25.57"

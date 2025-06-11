@@ -4,6 +4,7 @@ import type { ErrorHandler } from 'hono';
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { logger } from 'hono/logger';
+import * as cron from 'node-cron';
 
 // Load environment variables
 config();
@@ -123,3 +124,18 @@ serve({
 });
 
 console.log(`✅ Server is running on http://localhost:${port}`);
+
+// Self-ping cron job to keep the service alive on Render
+if (process.env['NODE_ENV'] === 'production' && process.env['RENDER_SERVICE_URL']) {
+  cron.schedule('*/15 * * * * *', async () => {
+    try {
+      const response = await fetch(`${process.env['RENDER_SERVICE_URL']}/health`);
+      if (response.ok) {
+        console.log('✅ Health check ping successful');
+      }
+    } catch (error) {
+      console.error('❌ Health check ping failed:', error);
+    }
+  });
+  console.log('🔄 Self-ping cron job started (every 15 seconds)');
+}
