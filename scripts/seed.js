@@ -1,9 +1,13 @@
 import { PrismaClient } from '@prisma/client';
+import bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log('🌱 Seeding database...');
+  console.log('🌱 Seeding production database...');
+  
+  // Hash password for admin user
+  const hashedPassword = await bcrypt.hash('demo123456', 10);
 
   // Create or find the default organization
   let org = await prisma.organization.findUnique({
@@ -23,44 +27,37 @@ async function main() {
     console.log('✅ Found existing organization:', org.name);
   }
 
-  // Find existing users or create demo user
-  let users = await prisma.user.findMany();
-  let user;
-  
-  if (users.length > 0) {
-    user = users[0];
-    
-    // Set user role to ADMIN if not set
-    if (!user.role) {
-      await prisma.user.update({
-        where: { id: user.id },
-        data: { role: 'ADMIN' },
-      });
-      console.log('✅ Updated user role to ADMIN');
-    }
-  } else {
-    // Check if demo user already exists
-    user = await prisma.user.findUnique({
-      where: { email: 'admin@ugc-agency.com' },
-    });
+  // Create or update admin user with admin@demo.com
+  let adminUser = await prisma.user.findUnique({
+    where: { email: 'admin@demo.com' },
+  });
 
-    if (!user) {
-      // Create demo user with Better Auth compatible fields
-      user = await prisma.user.create({
-        data: {
-          email: 'admin@ugc-agency.com',
-          name: 'Demo Admin',
-          role: 'ADMIN',
-          emailVerified: true,
-          // Note: Password will need to be set through Better Auth registration
-          // This creates a user record that can be updated when they first register
-        },
-      });
-      console.log('✅ Created demo user:', user.email);
-      console.log('⚠️  Please register with email admin@ugc-agency.com to set password');
-    } else {
-      console.log('✅ Found existing demo user:', user.email);
-    }
+  if (!adminUser) {
+    adminUser = await prisma.user.create({
+      data: {
+        id: crypto.randomUUID(),
+        email: 'admin@demo.com',
+        password: hashedPassword,
+        name: 'Demo Admin',
+        role: 'ADMIN',
+        emailVerified: true,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+    });
+    console.log('✅ Created admin user:', adminUser.email);
+  } else {
+    // Update existing user with password and ensure admin role
+    adminUser = await prisma.user.update({
+      where: { id: adminUser.id },
+      data: { 
+        password: hashedPassword,
+        role: 'ADMIN',
+        emailVerified: true,
+        name: 'Demo Admin',
+      },
+    });
+    console.log('✅ Updated admin user:', adminUser.email);
   }
 
   // Add user to organization (if not already a member)
@@ -68,7 +65,7 @@ async function main() {
     where: {
       organizationId_userId: {
         organizationId: org.id,
-        userId: user.id,
+        userId: adminUser.id,
       },
     },
   });
@@ -77,13 +74,13 @@ async function main() {
     await prisma.organizationMember.create({
       data: {
         organizationId: org.id,
-        userId: user.id,
+        userId: adminUser.id,
         role: 'OWNER',
       },
     });
-    console.log('✅ Added user to organization');
+    console.log('✅ Added admin to organization');
   } else {
-    console.log('✅ User already member of organization');
+    console.log('✅ Admin already member of organization');
   }
 
   // Create sample clients (if they don't exist)
@@ -105,8 +102,6 @@ async function main() {
       },
     });
     console.log('✅ Created Nike client');
-  } else {
-    console.log('✅ Found existing Nike client');
   }
 
   let client2 = await prisma.client.findFirst({
@@ -127,8 +122,6 @@ async function main() {
       },
     });
     console.log('✅ Created Glossier client');
-  } else {
-    console.log('✅ Found existing Glossier client');
   }
 
   // Create sample campaigns (if they don't exist)
@@ -141,7 +134,7 @@ async function main() {
       data: {
         organizationId: org.id,
         clientId: client1.id,
-        createdById: user.id,
+        createdById: adminUser.id,
         title: 'Nike Air Max Campaign',
         brief: 'Create authentic UGC content showcasing Nike Air Max sneakers in everyday settings. Focus on comfort, style, and versatility.',
         requirements: {
@@ -156,8 +149,6 @@ async function main() {
       },
     });
     console.log('✅ Created Nike campaign');
-  } else {
-    console.log('✅ Found existing Nike campaign');
   }
 
   let campaign2 = await prisma.campaign.findFirst({
@@ -169,7 +160,7 @@ async function main() {
       data: {
         organizationId: org.id,
         clientId: client2.id,
-        createdById: user.id,
+        createdById: adminUser.id,
         title: 'Glossier Summer Glow',
         brief: 'Showcase Glossier summer makeup looks with natural lighting. Target audience: women 18-30 interested in minimal makeup.',
         requirements: {
@@ -184,17 +175,89 @@ async function main() {
       },
     });
     console.log('✅ Created Glossier campaign');
-  } else {
-    console.log('✅ Found existing Glossier campaign');
   }
 
-  // Note: Demo user ready for login
-  console.log('🎉 Demo setup complete!');
-  console.log('📧 Demo Login: admin@ugc-agency.com');
-  console.log('🔑 Demo Password: demo123456');
-  console.log('⚠️  Register with this email first to set the password in Better Auth');
+  // Create sample creators (if they don't exist)
+  let creator1 = await prisma.user.findUnique({
+    where: { email: 'emma@creators.com' },
+  });
 
-  console.log('🎉 Database seeding completed!');
+  if (!creator1) {
+    creator1 = await prisma.user.create({
+      data: {
+        id: crypto.randomUUID(),
+        email: 'emma@creators.com',
+        password: hashedPassword,
+        name: 'Emma Rodriguez',
+        role: 'CREATOR',
+        emailVerified: true,
+        bio: 'Lifestyle and beauty content creator with 150K+ followers',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+    });
+    console.log('✅ Created sample creator: Emma');
+  }
+
+  let creator2 = await prisma.user.findUnique({
+    where: { email: 'marcus@creators.com' },
+  });
+
+  if (!creator2) {
+    creator2 = await prisma.user.create({
+      data: {
+        id: crypto.randomUUID(),
+        email: 'marcus@creators.com',
+        password: hashedPassword,
+        name: 'Marcus Chen',
+        role: 'CREATOR',
+        emailVerified: true,
+        bio: 'Fashion and fitness influencer with authentic street style',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+    });
+    console.log('✅ Created sample creator: Marcus');
+  }
+
+  // Create sample orders (if they don't exist)
+  const existingOrder1 = await prisma.order.findFirst({
+    where: { campaignId: campaign1.id, creatorId: creator1.id },
+  });
+
+  if (!existingOrder1) {
+    await prisma.order.create({
+      data: {
+        campaignId: campaign1.id,
+        creatorId: creator1.id,
+        status: 'ASSIGNED',
+        notes: 'Creator has experience with athletic brands',
+      },
+    });
+    console.log('✅ Created sample order: Emma + Nike campaign');
+  }
+
+  const existingOrder2 = await prisma.order.findFirst({
+    where: { campaignId: campaign2.id, creatorId: creator1.id },
+  });
+
+  if (!existingOrder2) {
+    await prisma.order.create({
+      data: {
+        campaignId: campaign2.id,
+        creatorId: creator1.id,
+        status: 'IN_PROGRESS',
+        notes: 'Perfect match for beauty content',
+      },
+    });
+    console.log('✅ Created sample order: Emma + Glossier campaign');
+  }
+
+  console.log('\n🎉 Production database seeding completed!');
+  console.log('\n📝 Login Credentials:');
+  console.log('   📧 Email: admin@demo.com');
+  console.log('   🔑 Password: demo123456');
+  console.log('\n✅ Ready for production use!');
 }
 
 main()
