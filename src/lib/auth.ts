@@ -19,6 +19,7 @@ export const auth = betterAuth({
   trustedOrigins: [
     process.env['FRONTEND_URL'] || 'http://localhost:5173',
     'https://ugc-platform.netlify.app',
+    'https://app.platform-test.website',
     'http://localhost:5173',
     'http://localhost:5174',
     'http://localhost:5175',
