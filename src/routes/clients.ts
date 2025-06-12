@@ -211,4 +211,111 @@ clientRoutes.delete('/:id', async (c) => {
   return c.json({ success: true });
 });
 
+// Get creators for a specific client
+clientRoutes.get('/:id/creators', async (c) => {
+  const user = c.get('user');
+  const { id } = c.req.param();
+  const { page = '1', limit = '10' } = c.req.query();
+
+  if (!user.organizationId) {
+    return c.json({ error: 'User not associated with an organization' }, 403);
+  }
+
+  // Check if client exists and belongs to user's organization
+  const client = await prisma.client.findFirst({
+    where: {
+      id,
+      organizationId: user.organizationId,
+    },
+  });
+
+  if (!client) {
+    return c.json({ error: 'Client not found' }, 404);
+  }
+
+  // Get unique creators who have worked for this client through orders
+  const creators = await prisma.user.findMany({
+    where: {
+      role: 'CREATOR',
+      orders: {
+        some: {
+          campaign: {
+            clientId: id,
+          },
+        },
+      },
+    },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      image: true,
+      bio: true,
+      phone: true,
+      createdAt: true,
+      _count: {
+        select: {
+          orders: {
+            where: {
+              campaign: {
+                clientId: id,
+              },
+            },
+          },
+        },
+      },
+    },
+    skip: (Number.parseInt(page) - 1) * Number.parseInt(limit),
+    take: Number.parseInt(limit),
+    orderBy: { createdAt: 'desc' },
+  });
+
+  // Get total count
+  const total = await prisma.user.count({
+    where: {
+      role: 'CREATOR',
+      orders: {
+        some: {
+          campaign: {
+            clientId: id,
+          },
+        },
+      },
+    },
+  });
+
+  // Add additional stats for each creator
+  const creatorsWithStats = await Promise.all(
+    creators.map(async (creator) => {
+      const orderStats = await prisma.order.groupBy({
+        by: ['status'],
+        where: {
+          creatorId: creator.id,
+          campaign: {
+            clientId: id,
+          },
+        },
+        _count: true,
+      });
+
+      return {
+        ...creator,
+        ordersForClient: creator._count.orders,
+        orderStats,
+        rating: 4.5 + Math.random() * 0.5, // Mock rating
+      };
+    })
+  );
+
+  return c.json({
+    creators: creatorsWithStats,
+    pagination: {
+      page: Number.parseInt(page),
+      limit: Number.parseInt(limit),
+      total,
+      pages: Math.ceil(total / Number.parseInt(limit)),
+    },
+  });
+});
+
 export default clientRoutes;

@@ -458,4 +458,119 @@ creatorRoutes.delete('/:id', async (c) => {
   return c.json({ success: true });
 });
 
+// Get clients for a specific creator
+creatorRoutes.get('/:id/clients', async (c) => {
+  const { id } = c.req.param();
+  const { page = '1', limit = '10' } = c.req.query();
+
+  // Check if creator exists
+  const creator = await prisma.user.findFirst({
+    where: {
+      id,
+      role: 'CREATOR',
+    },
+  });
+
+  if (!creator) {
+    return c.json({ error: 'Creator not found' }, 404);
+  }
+
+  // Get unique clients this creator has worked for through orders
+  const clients = await prisma.client.findMany({
+    where: {
+      campaigns: {
+        some: {
+          orders: {
+            some: {
+              creatorId: id,
+            },
+          },
+        },
+      },
+    },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      company: true,
+      website: true,
+      status: true,
+      createdAt: true,
+      _count: {
+        select: {
+          campaigns: {
+            where: {
+              orders: {
+                some: {
+                  creatorId: id,
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+    skip: (Number.parseInt(page) - 1) * Number.parseInt(limit),
+    take: Number.parseInt(limit),
+    orderBy: { createdAt: 'desc' },
+  });
+
+  // Get total count
+  const total = await prisma.client.count({
+    where: {
+      campaigns: {
+        some: {
+          orders: {
+            some: {
+              creatorId: id,
+            },
+          },
+        },
+      },
+    },
+  });
+
+  // Add additional stats for each client
+  const clientsWithStats = await Promise.all(
+    clients.map(async (client) => {
+      const orderStats = await prisma.order.groupBy({
+        by: ['status'],
+        where: {
+          creatorId: id,
+          campaign: {
+            clientId: client.id,
+          },
+        },
+        _count: true,
+      });
+
+      const totalOrders = await prisma.order.count({
+        where: {
+          creatorId: id,
+          campaign: {
+            clientId: client.id,
+          },
+        },
+      });
+
+      return {
+        ...client,
+        campaignsWithCreator: client._count.campaigns,
+        totalOrdersForCreator: totalOrders,
+        orderStats,
+      };
+    })
+  );
+
+  return c.json({
+    clients: clientsWithStats,
+    pagination: {
+      page: Number.parseInt(page),
+      limit: Number.parseInt(limit),
+      total,
+      pages: Math.ceil(total / Number.parseInt(limit)),
+    },
+  });
+});
+
 export default creatorRoutes;
